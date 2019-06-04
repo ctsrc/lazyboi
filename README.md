@@ -1,4 +1,4 @@
-# lazyboi -- the laziest possible way to send raw HTTP POST data
+# lazyboi – the laziest possible way to send raw HTTP POST data
 
 `lazyboi` is a bash script which makes it fast and easy to send raw HTTP POST
 requests to servers, for example to send some JSON to an API end-point that you
@@ -14,7 +14,7 @@ Several great tools exist for interacting with HTTP APIs. But sometimes those
 tools are overkill and you just want to submit some headers and data, and to
 tweak those headers and data a little bit all in one place in raw form.
 
-That is what `lazyboi` lets you do -- it embeds a raw HTTP request that you
+That is what `lazyboi` lets you do – it embeds a raw HTTP request that you
 can easily edit with your favorite source code editor, and which you then
 submit to the server by running the script. Edit and run. Edit and run.
 
