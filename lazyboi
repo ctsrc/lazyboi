@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+
+#
+# Copyright (c) 2019 Erik Nordstrøm <erik@nordstroem.no>
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+#
+# lazyboi -- the laziest possible way to send raw HTTP POST data
+#
+# For information about what this script is all about, see the README
+# in the GitHub home of this script; https://www.github.com/ctsrc/lazyboi
+#
+# The raw HTTP POST request that you are meant to edit is
+# embedded further down. Scroll down to the next comment
+# block in this script source file and you'll see it.
+#
+
+script_name=$( basename "$0" )
+script_version=0.9.0
+
+version ()
+{
+  echo "$script_name" $script_version
+}
+
+usage ()
+{
+  echo USAGE:
+  echo -n "     $script_name "
+  echo -e "\e[4mhost\e[0m [\e[4mport\e[0m]"
+  echo
+  echo "     $script_name -v"
+  echo
+  echo "     $script_name -h"
+  echo
+  echo OPTIONS AND ARGUMENTS
+  echo "     -v, --version"
+  echo "             Display" the script version.
+  echo
+  echo "     -h, --help"
+  echo "             Display" usage information and examples.
+  echo
+  echo -e "     \e[4mhost\e[0m    Numerical" IP address or a symbolic hostname.
+  echo
+  echo -e "     \e[4mport\e[0m    Numeric" port number.
+}
+
+help ()
+{
+  version
+  echo The laziest possible way to send raw HTTP POST data
+  echo
+  usage
+  echo
+  echo EXAMPLES
+  echo "    Send" your HTTP request to a server listening on port 8080 of localhost.
+  echo
+  echo "        $ $script_name" 127.0.0.1 8080
+  echo
+  echo "    Send" your HTTP request to the default port "(80)" of www.example.com.
+  echo
+  echo "        $ $script_name" www.example.com
+  echo
+}
+
+if [ $# -eq 1 ] ; then
+  if [[ "$1" = "-v" || "$1" == "--version" ]] ; then
+    version
+    exit 0
+  elif [[ "$1" = "-h" || "$1" == "--help" ]] ; then
+    help=$( help )
+    help_height=$( echo "$help" | wc -l )
+    term_height=$( tput lines )
+    if [[ $(( $help_height + 2 )) -ge $term_height ]] ; then
+      help | less -R
+    else
+      help
+    fi
+    exit 0
+  fi
+	host=$1
+	port=80
+elif [ $# -eq 2 ] ; then
+	host=$1
+	port=$2
+else
+  usage 1>&2
+  echo 1>&2
+  exit 1
+fi
+
+host "$host" >/dev/null 2>&1
+if [ $? -ne 0 ] ; then
+  echo Invalid host. 1>&2
+  echo 1>&2
+  usage 1>&2
+  echo 1>&2
+  exit 1
+fi
+
+if [[ ! "$port" =~ ^[1-9][0-9]*$ ]] ; then
+  echo Invalid port. 1>&2
+  echo 1>&2
+  usage 1>&2
+  echo 1>&2
+  exit 1
+fi
+
+line_num ()
+{
+  egrep -hn -m1 -n "$1" | cut -d: -f1
+}
+
+begin_req=$(( $( line_num "<<EOF$" <"$BASH_SOURCE" ) + 1 ))
+end_req=$( line_num "^EOF$" <"$BASH_SOURCE" )
+begin_body=$(( $begin_req + $( tail +$begin_req "$BASH_SOURCE" | line_num "^$" ) ))
+content_length=$( tail +$begin_body "$BASH_SOURCE" | head -n $(( $end_req - $begin_body )) | wc -c  )
+
+#
+# Stop scrolling. The embedded HTTP request starts right about here.
+#
+# NOTE: If you need to use the literal $ in your request body then this script
+# must first be made smarter by accounting for the escaping backslashes
+# that you would need to use. I am a lazy boi so I'm not implementing that
+# until I need it. Pull requests are welcome though ;)
+#
+# Likewise, don't use any variables or anything like that in the
+# request body -- if you do then the calculated content-length will
+# not be correct. That kind of stuff is beyond the scope of this script.
+#
+
+read -d '' req <<EOF
+POST /hello/ HTTP/1.1
+Host: $host:$port
+User-Agent: lazyboi/$script_version
+Accept: application/vnd.example.api-v2.hello+json, application/json;q=0.8, */*;q=0.2
+Connection: close
+Authorization: Bearer ~Un8G-M238/5S/+=
+X-Quux: 42
+Content-Length: $content_length
+Content-Type: application/json
+
+{
+  "baz": true,
+  "hoge": "Wibble, wobble!"
+}
+EOF
+
+#
+# The embedded HTTP request ends right above here.
+#
+
+while IFS= read line ; do
+  echo "> $line" 1>&2
+done <<< "$req"
+
+echo 1>&2
+
+echo "$req" | netcat "$host" "$port"
+
+echo 1>&2
