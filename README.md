@@ -78,7 +78,11 @@ lazyboi www.example.com
 ## Installation
 
 If you retrieved `lazyboi` by means of git clone then it should already be
-executable. Otherwise, make it so that it is; `chmod 755 lazyboi`.
+executable. Otherwise, make it so that it is;
+
+```bash
+chmod 755 lazyboi
+```
 
 Put `lazyboi` in some directory that is in your `$PATH`. For example,
 if you have `~/bin/` in your `$PATH` then that is an appropriate place to
@@ -87,3 +91,10 @@ put it.
 If `~/bin/` is not in your `$PATH` or `~/bin/` does not exist then you should
 crate `~/bin/` and add it to your `$PATH`, and then `~/bin/` is an appropriate
 place to put `lazyboi` for you as well.
+
+```bash
+mkdir -p ~/bin/
+cp lazyboi ~/bin/
+```
+
+And don't forget to add `~/bin/` to your `$PATH` if it's not there already.
