@@ -20,7 +20,7 @@
 # lazyboi -- the laziest possible way to send raw HTTP POST data
 #
 # For information about what this script is all about, see the README
-# in the GitHub home of this script; https://www.github.com/ctsrc/lazyboi
+# in the GitHub home of this script; https://github.com/ctsrc/lazyboi
 #
 # The raw HTTP POST request that you are meant to edit is
 # embedded further down. Scroll down to the next comment
