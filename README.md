@@ -77,7 +77,7 @@ lazyboi www.example.com
 
 ## Installation
 
-If retrieved `lazyboi` by means of git clone then it should already be
+If you retrieved `lazyboi` by means of git clone then it should already be
 executable. Otherwise, make it so that it is; `chmod 755 lazyboi`.
 
 Put `lazyboi` in some directory that is in your `$PATH`. For example,
