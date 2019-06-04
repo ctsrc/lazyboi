@@ -90,11 +90,11 @@ if [ $# -eq 1 ] ; then
     fi
     exit 0
   fi
-	host=$1
-	port=80
+  host=$1
+  port=80
 elif [ $# -eq 2 ] ; then
-	host=$1
-	port=$2
+  host=$1
+  port=$2
 else
   usage 1>&2
   echo 1>&2
