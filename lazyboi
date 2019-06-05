@@ -28,7 +28,7 @@
 #
 
 script_name=$( basename "$0" )
-script_version=0.9.2
+script_version=0.9.3
 
 version ()
 {
@@ -168,6 +168,40 @@ done <<< "$req"
 
 echo 1>&2
 
-echo "$req" | nc "$host" "$port"
+lazyboi_fifo ()
+{
+  #
+  # Some implementations of nc, including the one shipped with macOS,
+  # exit as soon as they read EOF from stdin. To keep nc running until
+  # we recieve a response from the server, we create a FIFO that we ask
+  # cat to read from and which we write to after receiving the server
+  # response.
+  #
+
+  w=$( mktemp -u )
+  mkfifo "$w"
+
+  cat <( echo "$req" ) "$w" | nc "$1" "$2" | ( cat - ; cat > "$w" )
+
+  rm "$w"
+}
+
+lazyboi_nofifo ()
+{
+  #
+  # Other implementations of nc, including the OpenBSD nc implementation
+  # shipped with OpenBSD and with at least some Linux distributions,
+  # don't exit as soon as they read EOF from stdin. If we were to use
+  # the pipeline above involving the FIFO, these would keep running
+  # after the server response was received. So a separate pipeline
+  # without the FIFO stuff is required for these.
+  #
+
+  echo "$req" | nc "$1" "$2"
+}
+
+# TODO: Feature-test to select between lazyboi_fifo and lazyboi_nofifo.
+
+lazyboi_fifo "$host" "$port"
 
 echo 1>&2
