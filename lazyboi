@@ -28,7 +28,7 @@
 #
 
 script_name=$( basename "$0" )
-script_version=0.9.3
+script_version=0.9.4
 
 version ()
 {
@@ -172,10 +172,11 @@ lazyboi_fifo ()
 {
   #
   # Some implementations of nc, including the one shipped with macOS,
-  # exit as soon as they read EOF from stdin. To keep nc running until
-  # we recieve a response from the server, we create a FIFO that we ask
-  # cat to read from and which we write to after receiving the server
-  # response.
+  # exit as soon as stdin is closed. To keep nc running until we recieve
+  # a response from the server, we create a FIFO that we ask cat to read
+  # from and which we write to after receiving the server response.
+  #
+  # TODO: Verify that this is the reason for the observed behavior.
   #
 
   w=$( mktemp -u )
@@ -191,10 +192,10 @@ lazyboi_nofifo ()
   #
   # Other implementations of nc, including the OpenBSD nc implementation
   # shipped with OpenBSD and with at least some Linux distributions,
-  # don't exit as soon as they read EOF from stdin. If we were to use
-  # the pipeline above involving the FIFO, these would keep running
-  # after the server response was received. So a separate pipeline
-  # without the FIFO stuff is required for these.
+  # don't exit as soon as stdin is closed. If we were to use the pipeline
+  # above involving the FIFO, these would keep running after the response
+  # from the server was received. So a separate pipeline without
+  # the FIFO stuff is required for these.
   #
 
   echo "$req" | nc "$1" "$2"
