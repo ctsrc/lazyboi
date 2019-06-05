@@ -28,7 +28,7 @@
 #
 
 script_name=$( basename "$0" )
-script_version=0.9.4
+script_version=0.9.5
 
 version ()
 {
@@ -162,13 +162,31 @@ EOF
 # The embedded HTTP request ends right above here.
 #
 
-while IFS= read line ; do
-  echo "> $line" 1>&2
-done <<< "$req"
+u=$( mktemp -u )
+w=$( mktemp -u )
 
-echo 1>&2
+cleanup ()
+{
+  if [ -e "$u" ] ; then
+    rm "$u"
+  fi
+  if [ -e "$w" ] ; then
+    rm "$w"
+  fi
+}
 
-lazyboi_fifo ()
+trap cleanup EXIT
+
+trap_int ()
+{
+  cleanup
+
+  exit 130
+}
+
+trap trap_int INT
+
+pipeline_fifo ()
 {
   #
   # Some implementations of nc, including the one shipped with macOS,
@@ -179,15 +197,12 @@ lazyboi_fifo ()
   # TODO: Verify that this is the reason for the observed behavior.
   #
 
-  w=$( mktemp -u )
   mkfifo "$w"
 
   cat <( echo "$req" ) "$w" | nc "$1" "$2" | ( cat - ; cat > "$w" )
-
-  rm "$w"
 }
 
-lazyboi_nofifo ()
+pipeline_nofifo ()
 {
   #
   # Other implementations of nc, including the OpenBSD nc implementation
@@ -201,8 +216,85 @@ lazyboi_nofifo ()
   echo "$req" | nc "$1" "$2"
 }
 
-# TODO: Feature-test to select between lazyboi_fifo and lazyboi_nofifo.
+can_do_without_fifo ()
+{
+  #
+  # The versions of nc that I have tested which do NOT exit as soon as
+  # stdin is closed take a flag "-N" which tell them to shutdown(2) the
+  # network socket after EOF on the input.
+  #
+  # The version of nc that I have tested which DOES exit as soon as
+  # stdin is closed, namely the version shipped with macOS, takes "-N"
+  # as an option that requires an argument.
+  #
+  # We use this to decide on whether we are going to use the pipeline
+  # that involves the FIFO or not. Doing it this way CAN have false
+  # positives for other versions of nc than those I have tested though;
+  #
+  #   - The "-N" option of the version of nc shipped with macOS that
+  #     I have tested is undocumented both in the man page and in the
+  #     help output of the command. I haven't looked into when it was
+  #     introduced and being that it is undocumented in said places
+  #     it is conceivable that Apple will remove that option in the
+  #     future.
+  #
+  #   - Other versions of nc might exist which take "-N" as an option
+  #     but which do NOT exit as soon as stdin is closed.
+  #
+  # Additionally, this test relies on being able to listen and connect
+  # to a UNIX domain socket. So if you are using a version of nc which
+  # does not support UNIX domain sockets then we won't be able to run
+  # this test at all.
+  #
+  # If you are running a version of nc with which this test gives an
+  # incorrect result or can't be ran, please file an issue about it
+  # on GitHub; https://github.com/ctsrc/lazyboi
+  #
 
-lazyboi_fifo "$host" "$port"
+  nc -lU "$u" 2>/dev/null &
+  listening_pid=$!
+
+  echo -n | nc -U "$u" -N 2>/dev/null
+  connect_result=$?
+
+  if [ $connect_result ] ; then
+    echo -n | nc -U "$u" 2>/dev/null
+  fi
+
+  if ps -p $listening_pid >/dev/null 2>&1 ; then
+    kill -9 $listening_pid >/dev/null
+  fi
+
+  if ! wait "$listening_pid" 2>/dev/null ; then
+    #
+    # Either the listening pid failed to run or it failed to exit.
+    # Either way, it means that we could not run our test correctly.
+    #
+    echo Failed to run test. 1>&2
+    echo 1>&2
+    echo Please file an issue at https://github.com/ctsrc/lazyboi 1>&2
+    echo 1>&2
+    echo -n Include details about what version of nc and 1>&2
+    echo " the" OS that you are running. 1>&2
+
+    exit 1
+  fi
+
+  return $connect_result
+}
+
+if can_do_without_fifo ; then
+  send_req=pipeline_nofifo
+else
+  send_req=pipeline_fifo
+fi
+
+while IFS= read line ; do
+  echo "> $line" 1>&2
+done <<< "$req"
+
+echo 1>&2
+
+$send_req "$host" "$port"
 
 echo 1>&2
