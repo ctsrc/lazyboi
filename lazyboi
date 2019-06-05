@@ -28,7 +28,7 @@
 #
 
 script_name=$( basename "$0" )
-script_version=0.9.5
+script_version=0.9.6
 
 version ()
 {
@@ -165,6 +165,8 @@ EOF
 u=$( mktemp -u )
 w=$( mktemp -u )
 
+exit_status=
+
 cleanup ()
 {
   if [ -e "$u" ] ; then
@@ -175,7 +177,14 @@ cleanup ()
   fi
 }
 
-trap cleanup EXIT
+trap_exit ()
+{
+  cleanup
+
+  exit $exit_status
+}
+
+trap trap_exit EXIT
 
 trap_int ()
 {
@@ -254,6 +263,8 @@ can_do_without_fifo ()
   nc -lU "$u" 2>/dev/null &
   listening_pid=$!
 
+  while ! [ -e "$u" ] ; do : ; done
+
   echo -n | nc -U "$u" -N 2>/dev/null
   connect_result=$?
 
@@ -296,5 +307,6 @@ done <<< "$req"
 echo 1>&2
 
 $send_req "$host" "$port"
+exit_status=$?
 
 echo 1>&2
