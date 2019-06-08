@@ -28,7 +28,7 @@
 #
 
 script_name=$( basename "$0" )
-script_version=0.9.6
+script_version=0.9.7
 
 version ()
 {
@@ -141,7 +141,7 @@ content_length=$( tail +$begin_body "$BASH_SOURCE" | head -n $(( $end_req - $beg
 # not be correct. That kind of stuff is beyond the scope of this script.
 #
 
-read -d '' req <<EOF
+IFS= read -d '' req <<EOF
 POST /hello/ HTTP/1.1
 Host: $host:$port
 User-Agent: lazyboi/$script_version
@@ -208,7 +208,7 @@ pipeline_fifo ()
 
   mkfifo "$w"
 
-  cat <( echo "$req" ) "$w" | nc "$1" "$2" | ( cat - ; cat > "$w" )
+  cat <( echo "$req" | sed '$d' ) "$w" | nc "$1" "$2" | ( cat - ; cat > "$w" )
 }
 
 pipeline_nofifo ()
@@ -222,7 +222,7 @@ pipeline_nofifo ()
   # the FIFO stuff is required for these.
   #
 
-  echo "$req" | nc "$1" "$2"
+  echo "$req" | sed '$d' | nc "$1" "$2"
 }
 
 can_do_without_fifo ()
@@ -300,9 +300,9 @@ else
   send_req=pipeline_fifo
 fi
 
-while IFS= read line ; do
+echo "$req" | sed '$d' | while IFS= read line ; do
   echo "> $line" 1>&2
-done <<< "$req"
+done
 
 echo 1>&2
 
